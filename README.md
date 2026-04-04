@@ -1,6 +1,6 @@
 # DevGenie
 
-All-in-one AI-powered developer assistant that runs entirely on your machine using [Ollama](https://ollama.com). No API keys, no cloud — your code stays local.
+All-in-one AI-powered developer assistant that runs entirely on your machine using [Ollama](https://ollama.com). No API keys, no cloud — the code stays local.
 
 ## Commands
 
