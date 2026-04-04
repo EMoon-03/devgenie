@@ -47,9 +47,6 @@ $ devgenie standup
 **What I did:**
 - Added JWT authentication with token refresh support
 - Fixed session expiry handling in the login flow
-
-**Blockers:**
-- None
 ```
 
 ## Prerequisites
