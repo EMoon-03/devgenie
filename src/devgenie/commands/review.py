@@ -34,3 +34,19 @@ def run(model: str, staged: bool) -> None:
 
     click.echo(f"Reviewing {label} changes...\n")
     stream_response(_PROMPT.format(diff=diff), model=model)
+
+
+from .._shared import model_option, require_git
+
+
+@click.command("review")
+@model_option
+@click.option(
+    "--staged/--unstaged",
+    default=True,
+    help="Review staged (default) or unstaged changes",
+)
+def command(model, staged):
+    """Review code changes for bugs, security issues, and improvements."""
+    if require_git():
+        run(model, staged)

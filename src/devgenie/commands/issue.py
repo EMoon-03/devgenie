@@ -22,3 +22,38 @@ Analysis:"""
 def run(model: str, error_text: str) -> None:
     click.echo("Analyzing issue...\n")
     stream_response(_PROMPT.format(error=error_text), model=model)
+
+
+import sys as _sys
+import click
+from .._shared import model_option
+
+
+@click.command("issue")
+@model_option
+@click.argument("error_text", required=False, metavar="ERROR")
+@click.option("--file", "-f", "error_file", default=None, help="Read error from a file")
+def command(model, error_text, error_file):
+    """Analyze an error or stack trace and suggest fixes.
+
+    \b
+    Pass the error as an argument, via --file, or pipe it via stdin:
+      devgenie issue "AttributeError: 'NoneType' object has no attribute 'split'"
+      devgenie issue --file error.log
+      cat traceback.txt | devgenie issue
+    """
+    if error_file:
+        try:
+            with open(error_file) as f:
+                text = f.read()
+        except OSError:
+            click.echo(f"Error: Could not read '{error_file}'")
+            return
+    elif error_text:
+        text = error_text
+    elif not _sys.stdin.isatty():
+        text = _sys.stdin.read()
+    else:
+        click.echo("Paste your error/stack trace (Ctrl+D when done):\n")
+        text = _sys.stdin.read()
+    run(model, text)

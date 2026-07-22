@@ -37,3 +37,18 @@ def run(model: str, from_ref: str, to_ref: str, version: str) -> None:
         commits=commit_list,
     )
     stream_response(prompt, model=model)
+
+
+import click
+from .._shared import model_option, require_git
+
+
+@click.command("changelog")
+@model_option
+@click.argument("from_ref")
+@click.argument("to_ref", default="HEAD")
+@click.option("--version", "-v", default="Unreleased", show_default=True, help="Release version label")
+def command(model, from_ref, to_ref, version):
+    """Generate a CHANGELOG entry between two git refs (tags, branches, commits)."""
+    if require_git():
+        run(model, from_ref, to_ref, version)

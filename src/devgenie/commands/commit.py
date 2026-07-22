@@ -52,3 +52,15 @@ def run(model: str) -> None:
                 return
         else:
             click.echo("Invalid option. Enter c, r, or q")
+
+
+import click
+from .._shared import model_option, require_git
+
+
+@click.command("commit")
+@model_option
+def command(model):
+    """Generate a commit message from staged changes."""
+    if require_git():
+        run(model)

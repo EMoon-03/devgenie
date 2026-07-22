@@ -1,6 +1,6 @@
 # DevGenie
 
-All-in-one AI-powered developer assistant that runs entirely on your machine using [Ollama](https://ollama.com). No API keys, no cloud — the code stays local.
+All-in-one AI-powered developer assistant. Runs on local LLMs via [Ollama](https://ollama.com) by default — no API keys, no cloud, your code stays on your machine — or on OpenAI or Anthropic, switchable with one setting.
 
 ## Commands
 
@@ -47,6 +47,72 @@ $ devgenie standup
 **What I did:**
 - Added JWT authentication with token refresh support
 - Fixed session expiry handling in the login flow
+```
+
+
+## Providers & Configuration
+
+DevGenie talks to LLM providers through a common interface, so you can switch
+between **Ollama** (local, default), **OpenAI**, and **Anthropic** without
+changing any commands.
+
+Configuration is layered, lowest to highest precedence:
+
+1. Built-in defaults (Ollama)
+2. User config — `~/.config/devgenie/config.toml`
+3. Project config — `./.devgenie.toml`
+4. Environment — `DEVGENIE_PROVIDER`
+
+Switch providers with one setting. Either set an environment variable:
+
+```bash
+export DEVGENIE_PROVIDER=openai
+```
+
+...or drop a `.devgenie.toml` in your project:
+
+```toml
+provider = "anthropic"
+
+[anthropic]
+model = "claude-3-5-sonnet-20241022"
+
+[openai]
+model = "gpt-4o"
+```
+
+API keys for cloud providers come from the environment (never stored in config):
+
+```bash
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-...
+```
+
+## Extending: add a workflow
+
+Workflows are auto-discovered from `src/devgenie/commands/`. To add one, drop in
+a new module that defines a `command` (a Click command) — it registers itself as
+a subcommand automatically, with no changes to the CLI:
+
+```python
+# src/devgenie/commands/explain.py
+import click
+from .._shared import model_option
+from ..llm_client import stream_response
+
+
+def run(model, filepath):
+    with open(filepath) as f:
+        code = f.read()
+    stream_response(f"Explain this code:\n\n{code}", model=model)
+
+
+@click.command("explain")
+@model_option
+@click.argument("filepath")
+def command(model, filepath):
+    """Explain what a source file does."""
+    run(model, filepath)
 ```
 
 ## Prerequisites

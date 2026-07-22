@@ -19,3 +19,20 @@ def run(model: str, query: str) -> None:
     os_name = platform.system()
     click.echo("Generating shell command...\n")
     stream_response(_PROMPT.format(os=os_name, query=query), model=model)
+
+
+import click
+from .._shared import model_option
+
+
+@click.command("shell")
+@model_option
+@click.argument("query", nargs=-1, required=True)
+def command(model, query):
+    """Convert a plain English description into a shell command.
+
+    \b
+    Example:
+      devgenie shell find all python files modified in the last 3 days
+    """
+    run(model, " ".join(query))

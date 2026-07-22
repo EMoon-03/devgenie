@@ -33,3 +33,16 @@ def run(model: str, hours: int) -> None:
     click.echo(f"Found {len(commits)} commit(s) in the last {hours}h. Generating standup...\n")
     commit_list = "\n".join(f"- {c}" for c in commits)
     stream_response(_PROMPT.format(hours=hours, commits=commit_list), model=model)
+
+
+import click
+from .._shared import model_option, require_git
+
+
+@click.command("standup")
+@model_option
+@click.option("--hours", "-h", default=24, show_default=True, help="Hours of history to scan")
+def command(model, hours):
+    """Write a daily standup summary from recent commits."""
+    if require_git():
+        run(model, hours)

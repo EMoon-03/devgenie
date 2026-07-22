@@ -42,3 +42,15 @@ def run(model: str, filepath: str) -> None:
 
     click.echo(f"Generating docstrings for {filepath} ({language})...\n")
     stream_response(_PROMPT.format(language=language, code=code), model=model)
+
+
+import click
+from .._shared import model_option
+
+
+@click.command("doc")
+@model_option
+@click.argument("filepath")
+def command(model, filepath):
+    """Add docstrings to all undocumented functions in a source file."""
+    run(model, filepath)
