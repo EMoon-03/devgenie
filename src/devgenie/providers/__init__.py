@@ -39,7 +39,7 @@ def get_provider(config: dict, model_override: str | None = None) -> Provider:
     provider_cls = _PROVIDERS[name]
 
     if name == "ollama":
-        return provider_cls(model=model)
+        return provider_cls(model=model, max_context=settings.get("max_context"))
 
     api_key = os.environ.get(_API_KEY_ENV[name]) or settings.get("api_key")
     if not api_key:

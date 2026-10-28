@@ -1,4 +1,6 @@
 import click
+
+from .._shared import model_option, require_git
 from ..git_utils import get_recent_commits
 from ..llm_client import stream_response
 
@@ -33,10 +35,6 @@ def run(model: str, hours: int) -> None:
     click.echo(f"Found {len(commits)} commit(s) in the last {hours}h. Generating standup...\n")
     commit_list = "\n".join(f"- {c}" for c in commits)
     stream_response(_PROMPT.format(hours=hours, commits=commit_list), model=model)
-
-
-import click
-from .._shared import model_option, require_git
 
 
 @click.command("standup")

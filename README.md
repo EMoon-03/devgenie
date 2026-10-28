@@ -75,7 +75,7 @@ export DEVGENIE_PROVIDER=openai
 provider = "anthropic"
 
 [anthropic]
-model = "claude-3-5-sonnet-20241022"
+model = "claude-sonnet-5-5"
 
 [openai]
 model = "gpt-4o"
@@ -117,7 +117,7 @@ def command(model, filepath):
 
 ## Prerequisites
 
-1. **Python 3.9+**
+1. **Python 3.10+** (tested on 3.10 through 3.15)
 2. **Ollama** — [install from ollama.com](https://ollama.com)
 3. **llama3 model**
 
@@ -137,6 +137,10 @@ cd devgenie
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
+
+# For development (runs the test suite)
+pip install -e ".[dev]"
+pytest
 ```
 
 ## Usage
@@ -221,6 +225,30 @@ devgenie review -m codellama
 2. Builds a focused prompt and sends it to Ollama running locally on `localhost:11434`
 3. Streams the response token-by-token so you see output immediately
 
+### Large diffs and the context window
+
+A model can only read a limited number of tokens at once (its *context window*).
+Ollama's default window is 4,096 tokens on most machines, and when a prompt is
+longer it doesn't fail: it silently drops the **beginning** of the prompt. For
+DevGenie that meant losing the instructions and the top of your diff.
+
+DevGenie now estimates the size of every prompt before sending it:
+
+- **Fits in 4,096 tokens:** sent as-is.
+- **Bigger:** DevGenie asks Ollama for a larger window (8K, 16K, 32K) and prints a note.
+- **Bigger than the model or your limit allows:** nothing is sent, and DevGenie
+  explains why and how to fix it.
+
+Larger windows use more GPU/RAM, so DevGenie stops at 32,768 tokens by default.
+To allow more:
+
+```toml
+# .devgenie.toml
+[ollama]
+model = "llama3.1"      # llama3 reads at most 8,192 tokens; llama3.1 reads 128K
+max_context = 65536
+```
+
 ## Troubleshooting
 
 **`Could not connect to Ollama`**
@@ -232,6 +260,10 @@ ollama serve
 ```bash
 ollama pull llama3
 ```
+
+**`this request is about N tokens, but ...`** — the diff is too big for the
+model's context window. Stage fewer files, switch to a longer-context model
+(`--model llama3.1`), or raise `max_context` (see *Large diffs* above).
 
 **`Not a git repository`** — run from inside a git repo, or run `git init` first.
 

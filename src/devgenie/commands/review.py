@@ -1,4 +1,6 @@
 import click
+
+from .._shared import model_option, require_git
 from ..git_utils import get_staged_changes, get_unstaged_changes
 from ..llm_client import stream_response
 
@@ -34,9 +36,6 @@ def run(model: str, staged: bool) -> None:
 
     click.echo(f"Reviewing {label} changes...\n")
     stream_response(_PROMPT.format(diff=diff), model=model)
-
-
-from .._shared import model_option, require_git
 
 
 @click.command("review")

@@ -1,5 +1,8 @@
 import platform
+
 import click
+
+from .._shared import model_option
 from ..llm_client import stream_response
 
 _PROMPT = """\
@@ -19,10 +22,6 @@ def run(model: str, query: str) -> None:
     os_name = platform.system()
     click.echo("Generating shell command...\n")
     stream_response(_PROMPT.format(os=os_name, query=query), model=model)
-
-
-import click
-from .._shared import model_option
 
 
 @click.command("shell")

@@ -1,9 +1,22 @@
 import subprocess
 from datetime import datetime, timedelta
 
+# Git emits UTF-8. Python 3.15 makes UTF-8 the default text encoding (PEP 686),
+# but older versions use the locale encoding (e.g. cp1252 on Windows), which
+# crashes on non-ASCII diffs. Being explicit gives identical behavior on every
+# supported version and OS; errors="replace" keeps a stray invalid byte in a
+# binary-ish diff from aborting the whole command.
+ENCODING = "utf-8"
 
-def _run(*args) -> tuple[str | None, str | None]:
-    result = subprocess.run(["git", *args], capture_output=True, text=True)
+
+def _run(*args: str) -> tuple[str | None, str | None]:
+    result = subprocess.run(
+        ["git", *args],
+        capture_output=True,
+        text=True,
+        encoding=ENCODING,
+        errors="replace",
+    )
     if result.returncode != 0:
         return None, result.stderr.strip()
     return result.stdout.strip(), None
@@ -52,8 +65,9 @@ def commit_with_message(message: str) -> bool:
 
 
 def read_file(path: str) -> str | None:
+    """Read a text file as UTF-8, or return None if it can't be read."""
     try:
-        with open(path) as f:
+        with open(path, encoding=ENCODING, errors="replace") as f:
             return f.read()
     except OSError:
         return None

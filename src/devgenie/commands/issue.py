@@ -1,4 +1,9 @@
+import sys
+
 import click
+
+from .._shared import model_option
+from ..git_utils import read_file
 from ..llm_client import stream_response
 
 _PROMPT = """\
@@ -24,11 +29,6 @@ def run(model: str, error_text: str) -> None:
     stream_response(_PROMPT.format(error=error_text), model=model)
 
 
-import sys as _sys
-import click
-from .._shared import model_option
-
-
 @click.command("issue")
 @model_option
 @click.argument("error_text", required=False, metavar="ERROR")
@@ -43,17 +43,15 @@ def command(model, error_text, error_file):
       cat traceback.txt | devgenie issue
     """
     if error_file:
-        try:
-            with open(error_file) as f:
-                text = f.read()
-        except OSError:
+        text = read_file(error_file)
+        if text is None:
             click.echo(f"Error: Could not read '{error_file}'")
             return
     elif error_text:
         text = error_text
-    elif not _sys.stdin.isatty():
-        text = _sys.stdin.read()
+    elif not sys.stdin.isatty():
+        text = sys.stdin.read()
     else:
         click.echo("Paste your error/stack trace (Ctrl+D when done):\n")
-        text = _sys.stdin.read()
+        text = sys.stdin.read()
     run(model, text)
