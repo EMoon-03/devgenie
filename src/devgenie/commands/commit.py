@@ -1,4 +1,6 @@
 import click
+
+from .._shared import model_option, require_git
 from ..git_utils import get_staged_changes, commit_with_message
 from ..llm_client import stream_response
 
@@ -52,10 +54,6 @@ def run(model: str) -> None:
                 return
         else:
             click.echo("Invalid option. Enter c, r, or q")
-
-
-import click
-from .._shared import model_option, require_git
 
 
 @click.command("commit")

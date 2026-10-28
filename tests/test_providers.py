@@ -68,7 +68,7 @@ def test_anthropic_stream_parses_sse():
         'data: {"type":"message_stop"}',
         'data: {"type":"content_block_delta","delta":{"text":" ignored"}}',
     ]
-    provider = AnthropicProvider(model="claude-3-5-sonnet-20241022", api_key="sk-test")
+    provider = AnthropicProvider(model="claude-sonnet-5-5", api_key="sk-test")
     with patch("requests.post", return_value=_sse_response(lines)):
         assert provider.stream("hi") == "Hi there"
 

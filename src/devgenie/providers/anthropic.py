@@ -15,8 +15,10 @@ class AnthropicProvider(Provider):
 
     name = "anthropic"
     URL = "https://api.anthropic.com/v1/messages"
-    DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
-    MAX_TOKENS = 1024
+    # claude-3-5-sonnet-20241022 was retired on 2025-10-28; requests to it fail.
+    DEFAULT_MODEL = "claude-sonnet-5-5"
+    # `doc` and `test` return whole files, so 1024 tokens truncated real output.
+    MAX_TOKENS = 8192
 
     def __init__(self, model: str | None = None, api_key: str | None = None):
         super().__init__(model or self.DEFAULT_MODEL)
@@ -62,7 +64,12 @@ class AnthropicProvider(Provider):
                 continue
             event_type = event.get("type")
             if event_type == "content_block_delta":
-                token = event.get("delta", {}).get("text", "")
+                delta = event.get("delta", {})
+                # Only print answer text. Newer models can also stream
+                # thinking_delta events, which are not part of the answer.
+                if delta.get("type", "text_delta") != "text_delta":
+                    continue
+                token = delta.get("text", "")
                 if token:
                     print(token, end="", flush=True)
                     tokens.append(token)

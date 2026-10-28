@@ -30,7 +30,8 @@ def test_new_module_would_be_discovered(tmp_path):
         "import click\n"
         "@click.command('explain')\n"
         "def command():\n"
-        "    pass\n"
+        "    pass\n",
+        encoding="utf-8",
     )
 
     group = click.Group()

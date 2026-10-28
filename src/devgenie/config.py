@@ -4,7 +4,7 @@ from pathlib import Path
 
 try:
     import tomllib  # Python 3.11+
-except ModuleNotFoundError:  # pragma: no cover - fallback for 3.9 / 3.10
+except ModuleNotFoundError:  # pragma: no cover - fallback for Python 3.10
     import tomli as tomllib
 
 # Layer 1 — built-in defaults. Ollama (local) is default so DevGenie works with
@@ -13,7 +13,7 @@ DEFAULTS = {
     "provider": "ollama",
     "ollama": {"model": "llama3"},
     "openai": {"model": "gpt-4o-mini"},
-    "anthropic": {"model": "claude-3-5-sonnet-20241022"},
+    "anthropic": {"model": "claude-sonnet-5-5"},
 }
 
 # Layer 2 — user-level config (all your projects).

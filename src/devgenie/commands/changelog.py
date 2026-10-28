@@ -1,4 +1,8 @@
+from datetime import date
+
 import click
+
+from .._shared import model_option, require_git
 from ..git_utils import get_log_between_refs
 from ..llm_client import stream_response
 
@@ -19,8 +23,6 @@ CHANGELOG entry:"""
 
 
 def run(model: str, from_ref: str, to_ref: str, version: str) -> None:
-    from datetime import date
-
     commits = get_log_between_refs(from_ref, to_ref)
     if commits is None:
         click.echo(f"Error: Could not get commits between '{from_ref}' and '{to_ref}'")
@@ -37,10 +39,6 @@ def run(model: str, from_ref: str, to_ref: str, version: str) -> None:
         commits=commit_list,
     )
     stream_response(prompt, model=model)
-
-
-import click
-from .._shared import model_option, require_git
 
 
 @click.command("changelog")

@@ -75,7 +75,7 @@ export DEVGENIE_PROVIDER=openai
 provider = "anthropic"
 
 [anthropic]
-model = "claude-3-5-sonnet-20241022"
+model = "claude-sonnet-5-5"
 
 [openai]
 model = "gpt-4o"
@@ -117,7 +117,7 @@ def command(model, filepath):
 
 ## Prerequisites
 
-1. **Python 3.9+**
+1. **Python 3.10+** (tested on 3.10 through 3.15)
 2. **Ollama** — [install from ollama.com](https://ollama.com)
 3. **llama3 model**
 
@@ -137,6 +137,10 @@ cd devgenie
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
+
+# For development (runs the test suite)
+pip install -e ".[dev]"
+pytest
 ```
 
 ## Usage

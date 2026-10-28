@@ -1,5 +1,8 @@
 import os
+
 import click
+
+from .._shared import model_option
 from ..git_utils import read_file
 from ..llm_client import stream_response
 
@@ -42,10 +45,6 @@ def run(model: str, filepath: str) -> None:
 
     click.echo(f"Generating docstrings for {filepath} ({language})...\n")
     stream_response(_PROMPT.format(language=language, code=code), model=model)
-
-
-import click
-from .._shared import model_option
 
 
 @click.command("doc")
