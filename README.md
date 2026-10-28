@@ -1,110 +1,291 @@
-# DevGenie
+# 🧞 DevGenie
 
-All-in-one AI-powered developer assistant. Runs on local LLMs via [Ollama](https://ollama.com) by default — no API keys, no cloud, your code stays on your machine — or on OpenAI or Anthropic, switchable with one setting.
+**An AI assistant for the boring parts of development, right in your terminal.**
+
+[![Tests](https://github.com/EMoon-03/devgenie/actions/workflows/tests.yml/badge.svg)](https://github.com/EMoon-03/devgenie/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.10%20%E2%80%93%203.15-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+DevGenie writes commit messages, reviews diffs, drafts changelogs and standups, generates tests and docstrings, turns plain English into shell commands, and explains stack traces.
+
+It runs on a **local model through [Ollama](https://ollama.com) by default**: no API key, no account, and your code never leaves your machine. When you want a bigger model, switch to **OpenAI** or **Anthropic** with one setting.
+
+```console
+$ git add .
+$ devgenie commit
+Generating commit message...
+
+feat(auth): add JWT token validation and refresh
+
+[c]ommit, [r]egenerate, [q]uit: c
+Committed successfully!
+```
+
+---
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Commands](#commands)
+- [Choosing a model or provider](#choosing-a-model-or-provider)
+- [Large diffs and the context window](#large-diffs-and-the-context-window)
+- [How it works](#how-it-works)
+- [Adding your own command](#adding-your-own-command)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick start
+
+**You need:** Python 3.10 or newer, git, and [Ollama](https://ollama.com/download).
+
+```bash
+# 1. Start Ollama and download the default model (one time, ~4.7 GB)
+ollama serve
+ollama pull llama3
+
+# 2. Install DevGenie
+git clone https://github.com/EMoon-03/devgenie.git
+cd devgenie
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -e .
+
+# 3. Try it inside any git repository
+cd ~/your-project
+git add .
+devgenie commit
+```
+
+Run `devgenie --help`, or `devgenie <command> --help`, to see every option.
+
+---
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `devgenie commit` | Analyzes staged changes and generates a Conventional Commit message |
-| `devgenie review` | Reviews your diff for bugs, security issues, and code quality |
-| `devgenie changelog <from> <to>` | Generates a CHANGELOG entry between two git refs |
-| `devgenie doc <file>` | Adds docstrings to all undocumented functions in a source file |
-| `devgenie shell <query>` | Converts plain English into a shell command |
-| `devgenie test <file>` | Generates unit tests for a source file |
-| `devgenie standup` | Writes a daily standup summary from recent commits |
-| `devgenie issue <error>` | Analyzes an error or stack trace and suggests fixes |
+| [`devgenie commit`](#commit) | Writes a Conventional Commit message for your staged changes |
+| [`devgenie review`](#review) | Reviews a diff for bugs, security issues, performance, and clarity |
+| [`devgenie changelog`](#changelog) | Drafts a CHANGELOG entry from the commits between two git refs |
+| [`devgenie standup`](#standup) | Summarizes your recent commits as a standup update |
+| [`devgenie test`](#test) | Generates unit tests for a source file |
+| [`devgenie doc`](#doc) | Adds missing docstrings to a source file |
+| [`devgenie shell`](#shell) | Turns a plain-English request into a shell command |
+| [`devgenie issue`](#issue) | Explains an error or stack trace and suggests a fix |
 
-## Demo
+Every command accepts `--model` / `-m` to use a different model for one run ([details](#choosing-a-model-or-provider)).
+
+### commit
+
+Reads your **staged** changes and proposes a commit message in [Conventional Commits](https://www.conventionalcommits.org/) format. You approve it, ask for another one, or cancel; nothing is committed without your `c`.
 
 ```bash
-# Generate a commit message from staged changes
-$ git add .
-$ devgenie commit
+git add src/auth.py
+devgenie commit
+```
 
-Generating commit message...
-feat(auth): add JWT token validation and refresh mechanism
+### review
 
-[c]ommit, [r]egenerate, [q]uit: c
-Committed successfully!
+Reviews your **staged** changes by default.
 
-# Review your changes before pushing
-$ devgenie review
+```bash
+devgenie review              # staged changes
+devgenie review --unstaged   # changes you haven't staged yet
+```
 
+Example output:
+
+```text
 Reviewing staged changes...
-- `validate_token()` does not handle expired tokens — will raise uncaught exception
-- Consider adding a `try/except` around the JWT decode call
 
-# Turn plain English into a shell command
-$ devgenie shell find all python files modified in the last 3 days
-
-Generating shell command...
-find . -name "*.py" -mtime -3
-
-# Generate a standup from today's commits
-$ devgenie standup
-
-**What I did:**
-- Added JWT authentication with token refresh support
-- Fixed session expiry handling in the login flow
+- validate_token() doesn't handle expired tokens; jwt.decode will raise
+  ExpiredSignatureError and crash the request.
+- Wrap the decode in try/except and return 401 instead.
 ```
 
-
-## Providers & Configuration
-
-DevGenie talks to LLM providers through a common interface, so you can switch
-between **Ollama** (local, default), **OpenAI**, and **Anthropic** without
-changing any commands.
-
-Configuration is layered, lowest to highest precedence:
-
-1. Built-in defaults (Ollama)
-2. User config — `~/.config/devgenie/config.toml`
-3. Project config — `./.devgenie.toml`
-4. Environment — `DEVGENIE_PROVIDER`
-
-Switch providers with one setting. Either set an environment variable:
+### changelog
 
 ```bash
-export DEVGENIE_PROVIDER=openai
+devgenie changelog v1.0.0                    # v1.0.0 up to HEAD
+devgenie changelog v1.0.0 v1.1.0             # between two tags
+devgenie changelog v1.0.0 --version 1.1.0    # label the entry "1.1.0"
 ```
 
-...or drop a `.devgenie.toml` in your project:
+Output uses Added / Changed / Fixed / Removed sections, ready to paste into `CHANGELOG.md`.
+
+### standup
+
+```bash
+devgenie standup             # commits from the last 24 hours
+devgenie standup --hours 8   # last 8 hours
+```
+
+### test
+
+```bash
+devgenie test src/mymodule.py
+```
+
+Prints a complete test file using the usual framework for the language: pytest for Python, Jest for JavaScript/TypeScript, Go's `testing` package, and so on.
+
+### doc
+
+```bash
+devgenie doc src/mymodule.py
+```
+
+Prints the whole file back with docstrings added wherever they were missing, in the idiomatic style for the language. Supports Python, JavaScript, TypeScript, Go, Rust, Java, Ruby, C#, C, and C++.
+
+> `test` and `doc` print to the terminal and don't change your files, so you can review the output before using it.
+
+### shell
+
+```bash
+devgenie shell find all python files modified in the last 3 days
+# find . -name "*.py" -mtime -3
+```
+
+DevGenie only **prints** the command; it never runs it. Read it before you paste it.
+
+### issue
+
+```bash
+devgenie issue "AttributeError: 'NoneType' object has no attribute 'split'"
+devgenie issue --file error.log
+pytest 2>&1 | devgenie issue        # pipe output straight in
+```
+
+You get the likely root cause, where to look, and a suggested fix.
+
+---
+
+## Choosing a model or provider
+
+| Provider | Runs | Needs | Default model |
+|---|---|---|---|
+| **Ollama** (default) | On your machine | Ollama installed | `llama3` |
+| **OpenAI** | In the cloud | `OPENAI_API_KEY` | `gpt-4o-mini` |
+| **Anthropic** | In the cloud | `ANTHROPIC_API_KEY` | `claude-sonnet-5-5` |
+
+> **Privacy:** with Ollama, nothing leaves your computer. With OpenAI or Anthropic, your diffs and files are sent to that company's API.
+
+**For one run**, pick a model with `--model`. It applies to whichever provider is active:
+
+```bash
+devgenie review --model llama3.1
+DEVGENIE_PROVIDER=anthropic devgenie commit
+```
+
+**To change the default**, add a config file. DevGenie reads these in order, and later ones win:
+
+1. Built-in defaults
+2. Your user config: `~/.config/devgenie/config.toml` (applies to all projects)
+3. A project config: `.devgenie.toml` in the folder you run DevGenie from
+4. The `DEVGENIE_PROVIDER` environment variable
 
 ```toml
-provider = "anthropic"
+# .devgenie.toml
+provider = "anthropic"            # "ollama", "openai", or "anthropic"
 
-[anthropic]
-model = "claude-sonnet-5-5"
+[ollama]
+model = "llama3.1"
+max_context = 32768               # see "Large diffs" below
 
 [openai]
 model = "gpt-4o"
+
+[anthropic]
+model = "claude-sonnet-5-5"
 ```
 
-API keys for cloud providers come from the environment (never stored in config):
+Set API keys as environment variables:
 
 ```bash
 export OPENAI_API_KEY=sk-...
-export ANTHROPIC_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-## Extending: add a workflow
+An `api_key` line in a config file also works, but keep keys out of any file you commit to git.
 
-Workflows are auto-discovered from `src/devgenie/commands/`. To add one, drop in
-a new module that defines a `command` (a Click command) — it registers itself as
-a subcommand automatically, with no changes to the CLI:
+---
+
+## Large diffs and the context window
+
+A model can only read a limited amount of text at once, called its **context window**, measured in tokens (about 3–4 characters of code each).
+
+Ollama's default window is 4,096 tokens on most machines. When a prompt is longer, Ollama doesn't report an error: it **silently throws away the beginning of the prompt**. DevGenie's prompts start with the instructions, so a big diff would lose the instructions and the top of your changes, and you'd get an answer based on part of the input.
+
+DevGenie prevents this by estimating each prompt's size before sending it:
+
+| Prompt size | What DevGenie does |
+|---|---|
+| Fits in 4,096 tokens | Sends it unchanged |
+| Bigger | Asks Ollama for a larger window (8K, 16K or 32K) and prints a note |
+| Too big for the model or your limit | Sends nothing and tells you how to fix it |
+
+```text
+Error: this request is about 16,235 tokens, but 'llama3' can read at most 8,192 tokens.
+Ollama would silently drop the beginning of the prompt (DevGenie's
+instructions and the start of your changes), so the answer would be
+based on part of the input. Nothing was sent. To fix it:
+  - use a model with a longer context, e.g. `--model llama3.1` (128K)
+  - or stage/review fewer files at a time
+  - or use a cloud provider:  DEVGENIE_PROVIDER=anthropic
+```
+
+Bigger windows use more GPU memory and RAM, so DevGenie stops at 32,768 tokens unless you raise `max_context` under `[ollama]`. Note that `llama3` itself can't go past 8,192 tokens; `llama3.1` reads up to 128K.
+
+---
+
+## How it works
+
+```text
+ devgenie review
+        │
+        ▼
+ ┌──────────────┐   git diff, git log,   ┌───────────────┐
+ │   command    │ ◀── a file, or stdin ──│  your project  │
+ └──────┬───────┘                        └───────────────┘
+        │ prompt
+        ▼
+ ┌──────────────┐  picks the provider from config, env, and --model
+ │  llm_client  │
+ └──────┬───────┘
+        ▼
+ ┌──────────────────────────────────────────┐
+ │  Provider: Ollama │ OpenAI │ Anthropic    │──▶ streams the answer to your terminal
+ └──────────────────────────────────────────┘
+```
+
+- **Commands don't know which model answers.** Every command calls one function, `stream_response(prompt)`. Providers share a small interface (`Provider.stream`), so adding one means writing a class and registering it, without touching any command.
+- **Answers stream as they're written**, so you see output immediately instead of waiting for the full response.
+- **No SDKs.** All three providers use plain HTTP via `requests`, which keeps DevGenie down to two dependencies: `click` and `requests` (plus `tomli` on Python 3.10).
+
+```text
+src/devgenie/
+├── cli.py            # entry point; finds commands automatically
+├── commands/         # one file per command (commit.py, review.py, ...)
+├── providers/        # ollama.py, openai.py, anthropic.py, base.py
+├── llm_client.py     # stream_response(): the one call every command makes
+├── config.py         # layered config loading
+└── git_utils.py      # git and file helpers (UTF-8 everywhere)
+```
+
+---
+
+## Adding your own command
+
+Commands are discovered automatically: add a file to `src/devgenie/commands/` that defines `command`, and it shows up in `devgenie --help`. Nothing else needs editing.
 
 ```python
 # src/devgenie/commands/explain.py
 import click
+
 from .._shared import model_option
+from ..git_utils import read_file
 from ..llm_client import stream_response
-
-
-def run(model, filepath):
-    with open(filepath) as f:
-        code = f.read()
-    stream_response(f"Explain this code:\n\n{code}", model=model)
 
 
 @click.command("explain")
@@ -112,160 +293,42 @@ def run(model, filepath):
 @click.argument("filepath")
 def command(model, filepath):
     """Explain what a source file does."""
-    run(model, filepath)
+    code = read_file(filepath)
+    if code is None:
+        click.echo(f"Error: Could not read '{filepath}'")
+        return
+    stream_response(f"Explain this code:\n\n{code}", model=model)
 ```
 
-## Prerequisites
-
-1. **Python 3.10+** (tested on 3.10 through 3.15)
-2. **Ollama** — [install from ollama.com](https://ollama.com)
-3. **llama3 model**
-
 ```bash
-# Install and start Ollama
-ollama serve
-
-# Pull the default model
-ollama pull llama3
+devgenie explain src/devgenie/cli.py
 ```
 
-## Installation
+---
+
+## Development
 
 ```bash
-git clone https://github.com/EMoon-03/devgenie.git
-cd devgenie
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
-
-# For development (runs the test suite)
 pip install -e ".[dev]"
 pytest
 ```
 
-## Usage
+The test suite mocks every network call, so it runs offline in under a second and doesn't need Ollama or API keys. GitHub Actions runs it on Python 3.10 through 3.15, on both Linux and Windows.
 
-### Commit messages
-
-```bash
-git add .
-devgenie commit
-# [c]ommit, [r]egenerate, [q]uit
-```
-
-### Code review
-
-```bash
-devgenie review              # review staged changes (default)
-devgenie review --unstaged   # review unstaged changes
-```
-
-### Changelog
-
-```bash
-devgenie changelog v1.0.0 v1.1.0
-devgenie changelog v1.0.0 HEAD --version 1.1.0
-```
-
-### Add docstrings
-
-```bash
-devgenie doc src/mymodule.py
-```
-
-Outputs the full updated file with docstrings added. Supports Python, JavaScript, TypeScript, Go, Rust, Java, Ruby, and C#.
-
-### Shell command generation
-
-```bash
-devgenie shell list all docker containers using more than 500mb of memory
-devgenie shell recursively delete all __pycache__ folders
-```
-
-### Generate tests
-
-```bash
-devgenie test src/mymodule.py
-```
-
-Outputs a ready-to-use test file using the standard framework for the detected language (pytest, jest, Go testing, etc.).
-
-### Daily standup
-
-```bash
-devgenie standup             # last 24 hours (default)
-devgenie standup --hours 8   # last 8 hours
-```
-
-### Issue / stack trace analysis
-
-```bash
-# Pass error inline
-devgenie issue "AttributeError: 'NoneType' object has no attribute 'split'"
-
-# Read from a file
-devgenie issue --file error.log
-
-# Pipe from stdin
-cat traceback.txt | devgenie issue
-```
-
-## Options
-
-Every command accepts `--model` / `-m` to switch the Ollama model:
-
-```bash
-devgenie commit --model mistral
-devgenie review -m codellama
-```
-
-## How it works
-
-1. DevGenie reads the relevant context (git diff, commit log, source file, or error text)
-2. Builds a focused prompt and sends it to Ollama running locally on `localhost:11434`
-3. Streams the response token-by-token so you see output immediately
-
-### Large diffs and the context window
-
-A model can only read a limited number of tokens at once (its *context window*).
-Ollama's default window is 4,096 tokens on most machines, and when a prompt is
-longer it doesn't fail: it silently drops the **beginning** of the prompt. For
-DevGenie that meant losing the instructions and the top of your diff.
-
-DevGenie now estimates the size of every prompt before sending it:
-
-- **Fits in 4,096 tokens:** sent as-is.
-- **Bigger:** DevGenie asks Ollama for a larger window (8K, 16K, 32K) and prints a note.
-- **Bigger than the model or your limit allows:** nothing is sent, and DevGenie
-  explains why and how to fix it.
-
-Larger windows use more GPU/RAM, so DevGenie stops at 32,768 tokens by default.
-To allow more:
-
-```toml
-# .devgenie.toml
-[ollama]
-model = "llama3.1"      # llama3 reads at most 8,192 tokens; llama3.1 reads 128K
-max_context = 65536
-```
+---
 
 ## Troubleshooting
 
-**`Could not connect to Ollama`**
-```bash
-ollama serve
-```
+| Message | Fix |
+|---|---|
+| `Could not connect to Ollama` | Start it with `ollama serve` |
+| `Model 'llama3' not found` | Download it with `ollama pull llama3` |
+| `this request is about N tokens, but ...` | The input is too big for the model. Stage fewer files, use `--model llama3.1`, or raise `max_context` ([details](#large-diffs-and-the-context-window)) |
+| `Missing API key for 'openai'` | `export OPENAI_API_KEY=...` (or `ANTHROPIC_API_KEY`) |
+| `Not a git repository` | Run DevGenie from inside a git repo |
+| `No staged changes` | Stage files first with `git add` |
 
-**`Model not found`**
-```bash
-ollama pull llama3
-```
-
-**`this request is about N tokens, but ...`** — the diff is too big for the
-model's context window. Stage fewer files, switch to a longer-context model
-(`--model llama3.1`), or raise `max_context` (see *Large diffs* above).
-
-**`Not a git repository`** — run from inside a git repo, or run `git init` first.
+---
 
 ## License
 
